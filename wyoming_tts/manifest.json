@@ -1,0 +1,12 @@
+{
+  "type": "plugin",
+  "domain": "wyoming_tts",
+  "stage": "alpha",
+  "name": "Wyoming TTS",
+  "description": "Connect Wyoming protocol TTS servers to Music Assistant for text-to-speech.",
+  "codeowners": ["@mill1000"],
+  "provides": ["tts"],
+  "requirements": ["wyoming>=1.11.0"],
+  "documentation": "https://github.com/mill1000/ma-wyoming-tts#readme",
+  "multi_instance": true
+}

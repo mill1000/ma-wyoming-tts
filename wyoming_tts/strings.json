@@ -1,0 +1,6 @@
+{
+  "manifest": {
+    "name": "Wyoming TTS",
+    "description": "Connect Wyoming protocol TTS servers to Music Assistant for text-to-speech."
+  }
+}
