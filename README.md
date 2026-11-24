@@ -1,116 +1,152 @@
-# Music Assistant community provider template
+# Wyoming TTS for Music Assistant
 
-A community provider adds something to [Music Assistant](https://music-assistant.io) from a
-repository of its own, with its own documentation, support and releases. An administrator of a
-Music Assistant server installs it from the
-[community catalog](https://github.com/music-assistant/community-catalog).
+A [Music Assistant](https://music-assistant.io) community provider that exposes
+[Wyoming](https://github.com/rhasspy/wyoming) protocol TTS servers —
+[wyoming-piper](https://github.com/rhasspy/wyoming-piper),
+[wyoming-tts](https://github.com/.../wyoming-tts), ESPHome with the wyoming TTS component,
+and the like — as standard Music Assistant **text-to-speech engines**, so the features
+that speak can use a local, private voice:
 
-This template holds a working music source, `example_music`, that plays a few test tones without
-an account or network, with its tests, a development container and CI.
+- **Announcements** — `mass.players.announce(player, message=...)`, or the
+  "Announcement text-to-speech engine" setting under Settings → System → Players.
+- **AI Radio** — the DJ clips of the AI Radio providers.
 
-## The rules
+Each TTS program/voice the server advertises in its `describe` answer becomes one
+selectable engine; add one provider instance per Wyoming server.
 
-A registry maintainer accepts a provider once, for what it does. A provider may do what the
-service's own app does for the user's account, reverse engineering included, but never more. The
-[community catalog rules](https://github.com/music-assistant/.github/blob/main/COMMUNITY_CATALOG_RULES.md)
-say exactly what is and is not accepted.
+## Supported servers
 
-A provider that talks to a music service is a good client of it: a throttler in front of its API,
-the cache for what repeats, no new requests while the service asks to wait, and no walking of the
-service's catalogue for one user action. The
-[developer guide of the server](https://github.com/music-assistant/server/blob/dev/DEVELOPMENT.md)
-explains this with the helpers that do it.
+Any server that speaks the Wyoming TTS protocol over a TCP socket:
 
-## From template to a listed provider
+| Server | Notes |
+| --- | --- |
+| [wyoming-piper](https://github.com/rhasspy/wyoming-piper) | The reference Piper server; one program per onnx model |
+| a multi-backend Wyoming TTS server | Servers that combine several backends (pocket, kitten, ...) expose one program per backend |
+| [ESPHome](https://esphome.io) | Devices with the `wyoming` component |
 
-You need [Docker](https://www.docker.com/products/docker-desktop/) and
-[VS Code](https://code.visualstudio.com/) with the Dev Containers extension, on Windows, macOS or
-Linux.
+The audio must be 16-bit little-endian mono PCM (what every known Wyoming TTS server
+emits). The sample rate of the server is preserved in the rendered clips; the players
+resample as needed.
 
-1. **Use the template.** Click **Use this template**, create your repository and open it in
-   VS Code. Choose **Reopen in Container**; the first build downloads the server and takes a few
-   minutes.
-2. **Name your provider.** Its `domain` is the unique id of the provider in `manifest.json`, such
-   as `my_service`; it is not a domain name. It holds lower case letters, digits and underscores,
-   and no other provider may use it. In the terminal of VS Code:
+### Security
 
-   ```sh
-   uv run python scripts/rename.py my_service
-   uv lock
-   ```
+The Wyoming protocol has **no authentication and no encryption by design**; it is meant
+for a trusted network. Run the TTS server on your LAN, the same way you would run
+wyoming-piper for Home Assistant.
 
-   The script renames the folder and sets the domain in the manifest, the tests, the CI and
-   `pyproject.toml`. Then delete `scripts/rename.py`; it belongs to the template.
-   The provider may also be in a folder named `provider`, or in `providers/my_service` in a
-   repository with several providers; set `folder` in `.github/workflows/ci.yml` to that folder.
-3. **Write it.** In `manifest.json` and `strings.json`, set the name, the description, your GitHub
-   handle in `codeowners` and the address of your documentation. List in `provides` what the
-   provider offers whatever its settings or the user's account: media types such as `track` or
-   `radio`, or for a plugin its main features such as `audio_source` or `scrobble`. It is for
-   discovery only, such as the filters of the Marketplace; what the provider does always comes
-   from its code. The
-   [developer documentation](https://developers.music-assistant.io/building-a-provider/) explains
-   how to build a provider.
+## Installation
 
-   | Path | What it is |
-   |---|---|
-   | `my_service/__init__.py` | The provider. Its comments show where the real work goes. |
-   | `my_service/manifest.json` | Its type, domain, name, code owners and requirements ([all fields](https://github.com/music-assistant/server/blob/dev/DEVELOPMENT.md#%EF%B8%8F-manifest-file)). |
-   | `my_service/strings.json` | Its texts in English: the name, the description and the labels of its settings. |
-   | `my_service/translations/` | Its texts in other languages the server has, such as `nl.json`. |
-   | `my_service/icon.svg` | Its icon. Optional, as are `icon_dark.svg` and `icon_monochrome.svg`. |
+The provider is a plugin: it runs inside the Music Assistant server, so you need a
+server that can load community providers.
 
-   The server's annotated templates (`_demo_music_provider`, `_demo_player_provider` and
-   `_demo_plugin_provider` in
-   [`music_assistant/providers`](https://github.com/music-assistant/server/tree/dev/music_assistant/providers))
-   list every method you can implement. A provider that asks the user for a login or another value
-   adds a [setup flow](https://developers.music-assistant.io/setup-flows/). The provider runs inside
-   the user's server: it never blocks and never writes into its own folder, and its requirements
-   install next to the server's packages, so use the versions the server already has where you can.
-4. **Run it.** Run the task **Run Music Assistant** (Terminal > Run Task) or `scripts/run.sh`, or
-   press F5 to run it in the debugger. Open <http://localhost:8095>, create the first user, add
-   your provider under Settings > Music sources and play a track in the web player; speakers in
-   your network usually cannot reach a server inside the container. When the provider is not
-   offered there, the output of the server says why; when it fails to start, its entry in the
-   settings shows the error. Restart the server after a change to the code; delete `.data/` to
-   start over with an empty server. Without the container, on macOS or Linux with
-   [uv](https://docs.astral.sh/uv/) and ffmpeg 8 or newer: `uv sync`, then `scripts/run.sh`.
-5. **Test it.** `uv run pytest` checks the manifest, the texts, the requirements and the icon, and
-   boots a real server that loads the provider and asks it for a track. For your own tests,
-   `pytest_plugins = ["music_assistant.testing"]` in `tests/conftest.py` gives the fixture `mass`:
-   a started server that loads your repository, announces nothing on the network and listens only
-   on the local machine. What your provider asks of its service still goes out. Lint, type check
-   and spelling run on every commit once `uv run pre-commit install` has run (the container does
-   that). CI runs all of this and the checks the community catalog runs on every release. A check
-   that fails says exactly what is wrong;
-   [What a provider needs](https://github.com/music-assistant/community-catalog/blob/main/MAINTAINING.md#what-a-provider-needs)
-   lists the exact limits.
-6. **Publish a release:** a GitHub release, not a pre-release, whose tag is the version, such as
-   `v1.2.0`.
-7. **Submit it** with the form
-   [Submit a provider](https://github.com/music-assistant/community-catalog/issues/new?template=submit-provider.yml).
-   It needs a public repository with an open source licence and a release that passes the checks.
-   The owner of the repository or a code owner in the manifest of its latest release submits it.
-   The result of the checks appears as a comment on the issue; a registry maintainer then decides
-   once about what the provider does. The
-   [registry's README](https://github.com/music-assistant/community-catalog#admission) has the
-   details.
+- **Home Assistant add-on:** the add-on's `PROVIDER_REPO` environment variable has been
+  replaced by a dev-mode server with this repository as its provider folder — use that.
+  On a standard server it will be installable from the
+  [community catalog](https://github.com/music-assistant/community-catalog) once listed.
+- **Any other server:** start it with this repository as a local provider folder, as the
+  development setup below does.
 
-After admission, you release whenever you want: publish a GitHub release, and nothing else is
-needed. The registry looks for new releases once a night and offers each version to the channels
-it passes on: nightly, beta, and one per stable version such as stable 2.11. When a release fails,
-or a version stops loading on a channel, the registry opens an issue on its own repository that
-mentions you with the reason, and closes it by itself when a later release passes.
-[What the nightly test reports](https://developers.music-assistant.io/building-a-provider/#what-the-nightly-test-reports)
-has the details.
+Then add the provider under Settings → Plugins and enter the address of your Wyoming
+TTS server:
 
-## The server version
+- `tcp://192.168.1.100:10200` for a server on the network — a bare `192.168.1.100:10200`
+  works too.
 
-The server version you develop against is the `music-assistant` line in `pyproject.toml`: a release
-tag or a commit of the server after the `@`. To move to another, change that line and run
-`uv lock`. Keep the two packages listed under it at the versions in the server's
-`music_assistant/providers/sendspin/manifest.json`.
+The setup verifies the server answers with at least one TTS voice before the provider
+is added, so a misconfigured server fails fast with a reason instead of surfacing
+during an announcement.
 
-## Licence
+### Options
 
-Apache-2.0, like Music Assistant. You may choose another open source licence for your provider.
+| Option | Default | Meaning |
+| --- | --- | --- |
+| Voice filter | *(empty)* | Limit which of the server's voices are exposed as engines, by program and voice name (see below) |
+| Voice languages | *(empty)* | Limit the exposed engines to voices that speak one of these languages (see below) |
+| Output format | `mp3` | The format rendered clips are stored and served in: `mp3` (small, ffmpeg-encoded), `wav` (plain PCM in a RIFF container) or `pcm` (the server's unmodified s16le output) |
+| Synthesis timeout | `30` | Seconds to wait for a render before failing it (5–30). A render that takes that long is stuck, not slow: the timeout bounds how long an announcement can wait on a wedged server |
+
+Raw PCM is an escape hatch for players or endpoints that can consume headerless PCM:
+the bytes arrive exactly as the server sent them, with the sample rate advertised in
+the `audio/L16;rate=…;channels=1` content type (and in `StreamDetails.audio_format`).
+Most players cannot decode a headerless stream and should be left on MP3.
+
+### The voice filters
+
+Servers like wyoming-piper or Kokoro expose dozens of voices, in many languages; the
+filters limit which of them become engines. Empty exposes all of them. Both filters
+apply at once: a voice must pass whichever of them are set.
+
+**Voice filter** (one matcher per value):
+
+- A value with a colon is a program pattern and a voice pattern, both glob patterns:
+  `piper:en_US-*`, `piper:en_US-lessac-medium`.
+- A value equal to a program name selects all of its voices: `piper`.
+- Any other value is a voice name pattern across all programs: `nl_NL-*`.
+- `*` selects everything.
+- Patterns are globs: `bf` matches only a voice named exactly `bf`; use `*bf*` to
+  match names containing `bf`.
+
+**Voice languages filter** (one pattern per value): a select with the languages the
+server advertises; each value is a glob pattern matched against the voice's language
+codes, and a voice passes when any of its languages matches any of the patterns.
+`en` matches the code `en` exactly; `en-*` (hand-edited into the config) also matches
+variants such as `en_GB`.
+
+The filters are applied live, without reloading the provider, and the "Available
+voices" line on the options page lists what the saved filters expose, with each
+voice's language. Music Assistant only sends values to the provider on save, so the
+line is a snapshot of the last saved filters, not a preview of the values being typed.
+A combination that matches nothing is saved but exposes no engine: the provider goes
+into the error state, the "Available voices" line says so, and the reason is on the
+provider's details — adjust the filters until it lists the voices you want. A feature
+that already picked one of the filtered-out voices surfaces Music Assistant's standard
+"TTS engine unavailable" alert until you re-pick.
+
+Rendered clips are cached on the server for 24 hours and served from a route on the
+streamserver, so repeated announcements do not re-render.
+
+### What the provider does not do
+
+- **stdio servers** — the provider connects to an existing server; it does not spawn
+  and supervise a process. Point it at `wyoming-piper -i tcp://...` instead.
+- **Voice updates while running** — voices added to a running server appear after the
+  provider is reloaded (Settings → Plugins → Wyoming TTS → reload).
+- **Non-mono or non-16-bit audio** — such servers are refused with a clear error.
+
+## Development
+
+The repository follows the
+[community provider template](https://github.com/music-assistant/community-provider-template);
+the provider is developed against a pinned git commit of the
+[Music Assistant server](https://github.com/music-assistant/server) in the dev
+dependencies of `pyproject.toml`.
+
+With [uv](https://docs.astral.sh/uv/):
+
+```sh
+uv sync          # create the venv with the pinned server
+uv run pytest    # boot a real dev-mode server with this repository as its provider folder
+uv run ruff check --no-fix .
+uv run ruff format --check .
+uv run mypy
+```
+
+The tests run the provider against an in-memory mock of the Wyoming client
+(`tests/mock_client.py`): discovery, the setup flow, rendering (MP3, WAV and PCM),
+program selection, the voice filters and the failure paths — no socket, no server
+process. MP3 tests need the `ffmpeg` binary on the machine.
+
+To develop against a real server:
+
+```sh
+./scripts/run.sh                # dev-mode Music Assistant server with this repository
+# in another terminal
+python -m wyoming_piper ... -i tcp://127.0.0.1:10200
+```
+
+## Release
+
+A release is a GitHub release on a `vX.Y.Z` tag (not a pre-release). The
+[community catalog](https://github.com/music-assistant/community-catalog) checks the
+release: the manifest, the requirements (package names with version specifiers only,
+available as wheels), and the provider loading in the server image of each channel.

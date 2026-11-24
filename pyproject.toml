@@ -8,6 +8,7 @@ dependencies = []
 
 [dependency-groups]
 dev = [
+  "wyoming>=1.11.0",
   # the server version this provider is developed against: a release tag or a commit after the @;
   # change it and run `uv lock` to move to another
   "music-assistant @ git+https://github.com/music-assistant/server@126c6d646ec14ee680e7051258e82dab0a09bac2",
