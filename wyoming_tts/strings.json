@@ -5,8 +5,8 @@
   },
   "setup_flow": {
     "user": {
-      "title": "Connect to the Wyoming TTS server",
-      "description": "Enter the address of the Wyoming TTS server. Before the provider is added, the server is verified by discovering the voices it advertises."
+      "title": "Connect a Wyoming TTS server",
+      "description": "Enter the address of your Wyoming TTS server."
     }
   },
   "config_entries": {
@@ -15,36 +15,35 @@
     },
     "server_uri": {
       "label": "Server address",
-      "description": "The address of the Wyoming TTS server: tcp://host:port (a bare host:port is taken to be tcp)."
+      "description": "The address of your Wyoming TTS server: host:port"
     },
     "voices": {
       "label": "Voice filter",
-      "description": "Limit which of the server's voices are exposed as engines; empty exposes all of them. A value with a colon is a program pattern and a voice pattern, such as piper:en_US-*; a value equal to a program name selects all of its voices, such as piper; any other value is a voice name pattern across all programs, such as nl_NL-*. Patterns use * wildcards: bf matches only a voice named exactly bf, use *bf* to match names containing it."
+      "description": "Limits which programs and voices are exposed to Music Assistant. Leave empty to expose all. Patterns may use * wildcards."
     },
     "voice_languages": {
-      "label": "Voice languages",
-      "description": "Limit which of the server's voices are exposed by the languages they speak; empty exposes all of them. Each value is a glob pattern matched against the voice's language codes: en matches the code en exactly, en-* matches en and any of its variants such as en_GB."
+      "label": "Language filter",
+      "description": "Limits which languages are exposed to Music Assistant. Leave empty to expose all. Patterns may use * wildcards."
     },
     "output_format": {
       "label": "Output format",
-      "description": "The format rendered clips are stored and served in. MP3 is small and widely supported; WAV is plain PCM in a RIFF container and needs no encoder; Raw PCM is the server's unmodified output, served as audio/L16 with its sample rate in the content type, for players or endpoints that can consume headerless PCM.",
+      "description": "The audio format rendered clips are stored and served in.",
       "options": {
         "mp3": "MP3",
-        "wav": "WAV",
-        "pcm": "Raw PCM"
+        "wav": "WAV"
       }
     },
     "synthesis_timeout": {
       "label": "Synthesis timeout",
-      "description": "The maximum number of seconds to wait for the server to render a message. The first request on many servers loads the model and can be slow."
+      "description": "The number of seconds to wait for the server to synthesize a message."
     }
   },
   "errors": {
-    "invalid_uri": "Only tcp://host:port addresses are supported.",
-    "cannot_connect": "Could not reach the Wyoming server. Please check the address and that the server is running.",
-    "no_tts_programs": "The Wyoming server does not advertise any TTS voices. Please check its configuration.",
-    "no_voices": "The Wyoming server exposes no voice matching the configured filters. Change or clear the voice or language filters in the provider's options.",
-    "voice_not_found": "The configured TTS engine is no longer available on the Wyoming server. Re-pick an engine where the TTS engine is configured.",
-    "synthesis_timeout": "The Wyoming server did not render the message within {0} seconds. If it is still loading the model, raise the synthesis timeout in the provider's options."
+    "invalid_uri": "Address must be tcp://host:port; a bare host:port is also accepted.",
+    "cannot_connect": "Could not connect to the server. Check the address and ensure the server is running.",
+    "no_tts_programs": "The server does not advertise any TTS programs.",
+    "no_voices": "The language and voice filters do not match anything advertised by the server. Change the voice or language filters in the plugin's options.",
+    "voice_not_found": "The configured voice is no longer available on the server.",
+    "synthesis_timeout": "The server did not render the message within {0} seconds. Check the Wyoming server's log for errors or increase the synthesis timeout in the plugin's options."
   }
 }

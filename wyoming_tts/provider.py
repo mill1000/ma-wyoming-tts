@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import json
 import os
 import re
 import shutil
@@ -70,11 +69,7 @@ if TYPE_CHECKING:
 OUTPUT_FORMATS: dict[str, ContentType] = {
     "mp3": ContentType.MP3,
     "wav": ContentType.WAV,
-    "pcm": ContentType.PCM_S16LE,
 }
-# the file in the cache directory that remembers the sample rate of each clip; raw pcm
-# carries no header, so its rate must travel in the served content type instead
-INDEX_FILE_NAME = "index.json"
 DEFAULT_OUTPUT_FORMAT = "mp3"
 # the maximum time in seconds a render may take, before the call is failed
 DEFAULT_SYNTHESIS_TIMEOUT = 30
@@ -171,8 +166,6 @@ class WyomingTTSProvider(PluginProvider):
 
     # rendered clips by file id; the route only serves paths from this index
     _clips: dict[str, str]
-    # the sample rate of the clips, for serving the headerless raw pcm ones
-    _clip_rates: dict[str, int]
     _unregister_route: Callable[[], None] | None = None
 
     async def handle_async_init(self) -> None:
@@ -181,7 +174,7 @@ class WyomingTTSProvider(PluginProvider):
         self._server_uri = normalize_server_uri(str(self.get_setup_value(CONF_SERVER_URI)))
         self._render_lock = asyncio.Lock()
         # clips rendered before a restart stay playable
-        self._clips, self._clip_rates = await self._index_cache()
+        self._clips = await self._index_cache()
         self._discovered = []
         self._selected = []
         self._engines = []
@@ -345,13 +338,8 @@ class WyomingTTSProvider(PluginProvider):
                 translation_key="voice_not_found",
                 translation_owner=f"provider.{DOMAIN}",
             )
-        file_id, output_format, rate = await self._render_speech(program, voice, message)
+        file_id, output_format = await self._render_speech(program, voice, message)
         audio_format = AudioFormat(content_type=OUTPUT_FORMATS[output_format])
-        if output_format == "pcm" and rate is not None:
-            # raw pcm is not self-describing: the rate rides along in the metadata too
-            audio_format = AudioFormat(
-                content_type=ContentType.PCM_S16LE, sample_rate=rate, bit_depth=16, channels=1
-            )
         return StreamDetails(
             provider=self.instance_id,
             item_id=file_id,
@@ -477,23 +465,16 @@ class WyomingTTSProvider(PluginProvider):
         if not await aiopath.isfile(file_path):
             self._clips.pop(file_id, None)
             raise web.HTTPNotFound
-        headers: dict[str, str] | None = None
-        if file_path.endswith(".pcm") and (rate := self._clip_rates.get(file_id)):
-            # raw pcm carries no header: the IANA audio/L16 type advertises its rate
-            headers = {"Content-Type": f"audio/L16;rate={rate};channels=1"}
-        return web.FileResponse(file_path, headers=headers)
+        return web.FileResponse(file_path)
 
-    async def _render_speech(
-        self, program: str, voice: str, message: str
-    ) -> tuple[str, str, int | None]:
+    async def _render_speech(self, program: str, voice: str, message: str) -> tuple[str, str]:
         """
         Render the message to a file in the cache directory.
 
         :param program: The TTS program to render with.
         :param voice: The voice to render with.
         :param message: The text to convert to speech.
-        :return: The file id of the rendered clip, the format it is stored in, and its
-            sample rate.
+        :return: The file id of the rendered clip and the format it is stored in.
         """
         output_format = self._output_format
         # the server and the program are part of the identity: repointing an instance or
@@ -507,7 +488,7 @@ class WyomingTTSProvider(PluginProvider):
                 with suppress(OSError):
                     await asyncio.to_thread(os.utime, file_path, None)
                 self._clips[file_id] = file_path
-                return file_id, output_format, self._clip_rates.get(file_id)
+                return file_id, output_format
             await makedirs(self._cache_dir, exist_ok=True)
             try:
                 pcm, rate = await synthesize(
@@ -515,11 +496,8 @@ class WyomingTTSProvider(PluginProvider):
                 )
                 if output_format == "mp3":
                     audio_data = await to_mp3(pcm, rate)
-                elif output_format == "wav":
-                    audio_data = to_wav(pcm, rate)
                 else:
-                    # raw pcm: the bytes the server sent, unmodified
-                    audio_data = pcm
+                    audio_data = to_wav(pcm, rate)
             except TimeoutError as err:
                 raise MusicAssistantError(
                     f"Synthesis timed out after {self._synthesis_timeout:.0f} seconds",
@@ -538,28 +516,8 @@ class WyomingTTSProvider(PluginProvider):
                     await remove(tmp_path)
                 raise
             self._clips[file_id] = file_path
-            await self._record_clip_rate(file_id, rate)
         await self._reap_cache()
-        return file_id, output_format, rate
-
-    async def _record_clip_rate(self, file_id: str, rate: int) -> None:
-        """Remember the sample rate of a rendered clip and persist it in the cache."""
-        self._clip_rates[file_id] = rate
-        await self._write_rate_index()
-
-    async def _write_rate_index(self) -> None:
-        """Persist the clip rates next to the clips, so they survive a restart."""
-        index_path = Path(self._cache_dir) / INDEX_FILE_NAME
-        tmp_path = f"{index_path}.tmp"
-        try:
-            async with aiofiles.open(tmp_path, "w") as _file:
-                json.dump(self._clip_rates, _file)
-            await replace(tmp_path, str(index_path))
-        except OSError:
-            # the index is a convenience for serving: a missing rate just means the clip
-            # is served without the rate in its content type
-            with suppress(OSError):
-                await remove(tmp_path)
+        return file_id, output_format
 
     async def _reap_cache(self) -> None:
         """Remove rendered clips that are older than the maximum cache age."""
@@ -571,8 +529,7 @@ class WyomingTTSProvider(PluginProvider):
                 for entry in entries:
                     with suppress(OSError):
                         if (
-                            entry.name != INDEX_FILE_NAME
-                            and entry.is_file(follow_symlinks=False)
+                            entry.is_file(follow_symlinks=False)
                             and entry.stat(follow_symlinks=False).st_mtime < cutoff
                         ):
                             Path(entry.path).unlink()
@@ -584,15 +541,11 @@ class WyomingTTSProvider(PluginProvider):
             reaped = await asyncio.to_thread(_reap)
             for file_id in reaped:
                 self._clips.pop(file_id, None)
-            if any(file_id in self._clip_rates for file_id in reaped):
-                for file_id in reaped:
-                    self._clip_rates.pop(file_id, None)
-                await self._write_rate_index()
 
-    async def _index_cache(self) -> tuple[dict[str, str], dict[str, int]]:
-        """Return the clips present in the cache directory, keyed by file id, and their rates."""
+    async def _index_cache(self) -> dict[str, str]:
+        """Return the clips present in the cache directory, keyed by file id."""
 
-        def _index() -> tuple[dict[str, str], dict[str, int]]:
+        def _index() -> dict[str, str]:
             # only adopt what this provider could have written itself: anything else that
             # ended up in the directory must never become reachable through the route
             paths: dict[str, str] = {}
@@ -604,22 +557,10 @@ class WyomingTTSProvider(PluginProvider):
                         and FILE_ID_PATTERN.match(Path(entry.name).stem)
                     ):
                         paths[Path(entry.name).stem] = entry.path
-            rates: dict[str, int] = {}
-            try:
-                raw = (Path(self._cache_dir) / INDEX_FILE_NAME).read_text()
-                rates = {
-                    file_id: rate
-                    for file_id, rate in json.loads(raw).items()
-                    if file_id in paths and isinstance(rate, int)
-                }
-            except OSError, ValueError:
-                # no index yet, or an unreadable one: the clips still play, just
-                # without their rate in the served content type
-                pass
-            return paths, rates
+            return paths
 
         try:
             return await asyncio.to_thread(_index)
         except OSError:
             # nothing rendered yet: the cache directory is created on the first render
-            return {}, {}
+            return {}

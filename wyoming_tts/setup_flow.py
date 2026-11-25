@@ -15,19 +15,15 @@ from .wyoming import NoTtsVoicesError, discover_voices, normalize_server_uri
 if TYPE_CHECKING:
     from music_assistant.models.setup_flow import SetupSession
 
-# a placeholder address the user edits; a port where nothing listens, so a blind submit fails
-DEFAULT_SERVER_URI = "tcp://127.0.0.1:10200"
-# the only scheme the provider can connect to; stdio would require the server to spawn and
-# supervise a process, which is out of scope
+
+DEFAULT_SERVER = "127.0.0.1:10200"
+
 SUPPORTED_SCHEME = "tcp://"
 
 
 async def run_setup(session: SetupSession) -> None:
     """
-    Run the Wyoming Text-to-speech setup flow.
-
-    Collects the address of the Wyoming TTS server, then verifies it by discovering its
-    voices.
+    Run the Wyoming TTS setup flow.
 
     :param session: The setup session driving the flow.
     """
@@ -40,7 +36,7 @@ async def run_setup(session: SetupSession) -> None:
                     key=CONF_SERVER_URI,
                     type=ConfigEntryType.STRING,
                     required=True,
-                    default_value=DEFAULT_SERVER_URI,
+                    default_value=DEFAULT_SERVER,
                     value=setup_data.get(CONF_SERVER_URI),
                 ),
             ],
@@ -53,7 +49,7 @@ async def run_setup(session: SetupSession) -> None:
         if not server_uri.startswith(SUPPORTED_SCHEME):
             errors = {
                 CONF_SERVER_URI: SetupFlowError(
-                    "Only tcp://host:port addresses are supported",
+                    "Address must be tcp://host:port; a bare host:port is also accepted",
                     "invalid_uri",
                 )
             }
