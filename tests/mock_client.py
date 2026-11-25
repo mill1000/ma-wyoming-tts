@@ -49,6 +49,8 @@ class Voice:
 
     name: str
     languages: tuple[str, ...] = ("en",)
+    installed: bool = True
+    description: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +59,7 @@ class Program:
 
     name: str
     voices: tuple[Voice, ...]
+    installed: bool = True
 
 
 class MockServer:
@@ -71,8 +74,12 @@ class MockServer:
         """
         self.programs = programs
         self.uri = uri
-        # "ok" answers with audio; "error" answers synthesize with an error event
+        # "ok" answers with audio; "error" answers synthesize with an error event;
+        # "no_audio" stops without sending any audio; "silent" never answers
         self.behavior = "ok"
+        # the format the mock emits; the provider only supports 16-bit mono
+        self.width = WIDTH
+        self.channels = CHANNELS
         # (served program, voice, text) of every synthesize request served
         self.synthesized: list[tuple[str, str, str]] = []
 
@@ -84,15 +91,15 @@ class MockServer:
                 TtsProgram(
                     name=program.name,
                     attribution=attribution,
-                    installed=True,
+                    installed=program.installed,
                     description=None,
                     version="1.0.0",
                     voices=[
                         TtsVoice(
                             name=voice.name,
                             attribution=attribution,
-                            installed=True,
-                            description=None,
+                            installed=voice.installed,
+                            description=voice.description,
                             version=None,
                             languages=list(voice.languages),
                         )
@@ -158,15 +165,20 @@ class MockClient:
         server.synthesized.append((program.name, voice_name, request.text))
         if server.behavior == "error":
             self._queue.put_nowait(Error(text="synthesis failed", code="500").event())
-            return
-        size = SAMPLES_PER_CHUNK * WIDTH * CHANNELS
-        for offset in range(0, len(AUDIO), size):
-            self._queue.put_nowait(
-                AudioChunk(
-                    rate=RATE, width=WIDTH, channels=CHANNELS, audio=AUDIO[offset : offset + size]
-                ).event()
-            )
-        self._queue.put_nowait(AudioStop().event())
+        elif server.behavior == "no_audio":
+            self._queue.put_nowait(AudioStop().event())
+        elif server.behavior != "silent":
+            size = SAMPLES_PER_CHUNK * server.width * server.channels
+            for offset in range(0, len(AUDIO), size):
+                self._queue.put_nowait(
+                    AudioChunk(
+                        rate=RATE,
+                        width=server.width,
+                        channels=server.channels,
+                        audio=AUDIO[offset : offset + size],
+                    ).event()
+                )
+            self._queue.put_nowait(AudioStop().event())
 
 
 class MockClientFactory:
