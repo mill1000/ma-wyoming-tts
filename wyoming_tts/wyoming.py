@@ -65,21 +65,16 @@ def voice_matches(matcher: str, program: str, voice: str) -> bool:
     """
     Return whether a voice filter value selects the given program/voice pair.
 
-    A value with a colon is a program pattern and a voice pattern, both matched with
-    fnmatch (e.g. ``piper:en_US-*``). A value equal to a program name selects all the
-    voices of that program (e.g. ``piper``). Any other value is a voice name pattern,
-    matched across all programs (e.g. ``nl_NL-*``). ``*`` matches everything.
+    The value is an fnmatch pattern matched against the engine id, the voice name
+    prefixed with the program name and a colon (e.g. ``piper:en_US-a``): ``piper*``
+    selects all the voices of program ``piper``, ``*nl_NL-*`` the Dutch voices of any
+    program, and ``*`` everything.
 
     :param matcher: One value of the voice filter.
     :param program: The name of a discovered program.
     :param voice: The name of a discovered voice.
     """
-    if ":" in matcher:
-        program_pattern, _, voice_pattern = matcher.partition(":")
-        return fnmatch(program, program_pattern) and fnmatch(voice, voice_pattern)
-    if matcher == program:
-        return True
-    return fnmatch(voice, matcher)
+    return fnmatch(f"{program}:{voice}", matcher)
 
 
 def voice_language_matches(matcher: str, languages: tuple[str, ...]) -> bool:

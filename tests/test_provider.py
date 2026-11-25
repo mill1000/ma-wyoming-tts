@@ -122,9 +122,9 @@ async def test_voice_filter(mass: MusicAssistant, mock_client: MockClientFactory
 
     assert await engine_ids() == all_ids
     for matchers, expected in [
-        (["en_US-*"], ["piper:en_US-a", "piper:en_US-b", "kitten:en_US-x"]),
+        (["*en_US-*"], ["piper:en_US-a", "piper:en_US-b", "kitten:en_US-x"]),
         (["piper:nl_NL-c"], ["piper:nl_NL-c"]),
-        (["kitten"], ["kitten:en_US-x"]),
+        (["kitten*"], ["kitten:en_US-x"]),
         ([], all_ids),
     ]:
         await mass.config.save_provider_config(

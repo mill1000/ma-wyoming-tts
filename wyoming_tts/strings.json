@@ -23,7 +23,7 @@
     },
     "voice_languages": {
       "label": "Language filter",
-      "description": "Limits which languages are exposed to Music Assistant. Leave empty to expose all. Patterns may use * wildcards."
+      "description": "Limits which languages are exposed to Music Assistant. Leave empty to expose all."
     },
     "output_format": {
       "label": "Output format",
