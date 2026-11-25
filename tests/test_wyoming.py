@@ -27,18 +27,17 @@ def test_normalize_server_uri() -> None:
 
 
 def test_voice_matches() -> None:
-    """The voice filter matches the voice name prefixed with the program name."""
-    # the pattern is a glob against the engine id, program and voice with a colon
+    """The voice filter matches by program and voice, by program, or by voice alone."""
+    # a value with a colon is a program pattern and a voice pattern
     assert voice_matches("piper:en_US-*", "piper", "en_US-a")
     assert not voice_matches("piper:en_US-*", "kitten", "en_US-a")
     assert not voice_matches("piper:nl_NL-*", "piper", "en_US-a")
-    # without a wildcard the pattern is an exact match on the whole id: a bare program
-    # name selects nothing
-    assert voice_matches("piper:en_US-a", "piper", "en_US-a")
-    assert not voice_matches("piper", "piper", "anything")
-    # a leading wildcard reaches the voice names of any program
-    assert voice_matches("*en_US-*", "kitten", "en_US-b")
-    assert not voice_matches("*en_US-*", "kitten", "nl_NL-b")
+    # a value equal to a program name selects all of its voices
+    assert voice_matches("piper", "piper", "anything")
+    assert not voice_matches("piper", "kitten", "anything")
+    # any other value is a voice pattern across all programs
+    assert voice_matches("en_US-*", "kitten", "en_US-b")
+    assert not voice_matches("en_US-*", "kitten", "nl_NL-b")
     # * matches everything
     assert voice_matches("*", "piper", "en_US-a")
 

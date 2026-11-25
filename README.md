@@ -35,10 +35,11 @@ See [OHF-Voice/wyoming-piper](https://github.com/OHF-Voice/wyoming-piper) for mo
 A server may advertise dozens of voices, in many languages. Filters limit which of these become TTS engines in Music Assistant. Leave them blank to expose all languages and voices.
 
 ### Voice Filters
-The voice filters are a list of wildcard patterns. A voice is exposed when any the filters match. 
+The voice filters are a list of wildcard patterns. A voice is exposed when any of the filters match. 
 
-Patterns are matched against the voice id prefixed by the program name:
-* `piper*` - Expose voices provided by the `piper` program.
+A pattern is matched against the program and voice name, the program name, or the voice name:
+* `piper:en*` - Expose all `en` voices provided by the `piper` program.
+* `piper` - Expose all voices provided by the `piper` program.
 * `bf*` - Expose all British female voices (from Kokoro).
 
 ### Language Filters
