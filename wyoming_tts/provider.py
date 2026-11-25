@@ -319,7 +319,10 @@ class WyomingTTSProvider(PluginProvider):
         :return: StreamDetails for the (cached) audio clip.
         """
         if not self._engines:
-            msg = "The Wyoming server exposes no voice matching the configured filters"
+            msg = (
+                "The language and voice filters do not match anything advertised by the server. "
+                "Change the voice or language filters in the plugin's options."
+            )
             raise MusicAssistantError(
                 msg,
                 translation_key="no_voices",
@@ -332,7 +335,8 @@ class WyomingTTSProvider(PluginProvider):
             discovered.program == program and discovered.voice == voice
             for discovered in self._discovered
         ):
-            msg = f"Unknown TTS engine {engine_id!r} for this provider"
+            self.logger.warning("Unknown TTS engine %r for this provider", engine_id)
+            msg = "The configured voice is no longer available on the server."
             raise MusicAssistantError(
                 msg,
                 translation_key="voice_not_found",
@@ -499,10 +503,13 @@ class WyomingTTSProvider(PluginProvider):
                 else:
                     audio_data = to_wav(pcm, rate)
             except TimeoutError as err:
+                seconds = f"{self._synthesis_timeout:.0f}"
                 raise MusicAssistantError(
-                    f"Synthesis timed out after {self._synthesis_timeout:.0f} seconds",
+                    f"The server did not synthesize the message within {seconds} seconds. "
+                    "Check the Wyoming server's log for errors or increase the synthesis timeout "
+                    "in the plugin's options.",
                     translation_key="synthesis_timeout",
-                    translation_args=[f"{self._synthesis_timeout:.0f}"],
+                    translation_args=[seconds],
                     translation_owner=f"provider.{DOMAIN}",
                 ) from err
             # write to a temp file first so an interrupted render leaves no partial clip

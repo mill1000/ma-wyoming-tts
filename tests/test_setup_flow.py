@@ -40,8 +40,10 @@ async def test_setup_flow_rejects_bad_uri(mass: MusicAssistant) -> None:
     # nothing listens on this port
     step = await mass.config.submit_setup_flow(step.flow_id, {CONF_SERVER_URI: "tcp://127.0.0.1:1"})
     assert step.type == FlowStepType.FORM
-    assert (step.errors.get(CONF_SERVER_URI) or "").startswith("Connection failed")
+    assert step.errors.get(CONF_SERVER_URI) == (
+        "Could not connect to the server. Check the address and ensure the server is running."
+    )
     # an unsupported scheme is refused without a connection attempt
     step = await mass.config.submit_setup_flow(step.flow_id, {CONF_SERVER_URI: "stdio://cat"})
     assert step.type == FlowStepType.FORM
-    assert "tcp://host:port" in (step.errors.get(CONF_SERVER_URI) or "")
+    assert step.errors.get(CONF_SERVER_URI) == "Invalid server address. Expected host:port"

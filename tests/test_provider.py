@@ -157,7 +157,7 @@ async def test_dead_end_filter_at_load_loads_without_engines(
     await mass.load_provider(instance_id)
     provider = provider_of(mass, instance_id)
     assert await provider.get_tts_engines() == []
-    with pytest.raises(MusicAssistantError, match="no voice matching"):
+    with pytest.raises(MusicAssistantError, match="do not match anything advertised"):
         await provider.get_tts_message("Hello")
     # fixing the filter from the options page restores the engines
     await mass.config.save_provider_config(DOMAIN, {CONF_VOICES: []}, instance_id=instance_id)

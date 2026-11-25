@@ -49,19 +49,28 @@ async def run_setup(session: SetupSession) -> None:
         if not server_uri.startswith(SUPPORTED_SCHEME):
             errors = {
                 CONF_SERVER_URI: SetupFlowError(
-                    "Address must be tcp://host:port; a bare host:port is also accepted",
+                    "Invalid server address. Expected host:port",
                     "invalid_address",
                 )
             }
             continue
         try:
             await discover_voices(server_uri)
-        except NoTtsVoicesError as err:
-            errors = {CONF_SERVER_URI: SetupFlowError(str(err), "no_tts_programs")}
-            continue
-        except OSError as err:
+        except NoTtsVoicesError:
             errors = {
-                CONF_SERVER_URI: SetupFlowError(f"Connection failed: {err}", "cannot_connect")
+                CONF_SERVER_URI: SetupFlowError(
+                    "The server does not advertise any TTS programs or voices.",
+                    "no_tts_programs",
+                )
+            }
+            continue
+        except OSError:
+            errors = {
+                CONF_SERVER_URI: SetupFlowError(
+                    "Could not connect to the server. Check the address and ensure the server "
+                    "is running.",
+                    "cannot_connect",
+                )
             }
             continue
         try:
