@@ -70,7 +70,7 @@ OUTPUT_FORMATS: dict[str, ContentType] = {
     "mp3": ContentType.MP3,
     "wav": ContentType.WAV,
 }
-DEFAULT_OUTPUT_FORMAT = "mp3"
+DEFAULT_OUTPUT_FORMAT = "wav"
 # the maximum time in seconds a render may take, before the call is failed
 DEFAULT_SYNTHESIS_TIMEOUT = 30
 MIN_SYNTHESIS_TIMEOUT = 5

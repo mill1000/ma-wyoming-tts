@@ -43,7 +43,7 @@ async def test_get_tts_message_streams_audio(
     details = await provider.get_tts_message("Hello", engine_id="piper:en_US-a")
     assert details.stream_type == StreamType.HTTP
     assert details.media_type == MediaType.SOUND_EFFECT
-    assert details.audio_format.content_type == ContentType.MP3
+    assert details.audio_format.content_type == ContentType.WAV
     path = str(details.path)
     assert path.startswith(mass.streams.base_url)
     async with mass.http_session.get(path) as response:
