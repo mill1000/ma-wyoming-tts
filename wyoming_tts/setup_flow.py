@@ -50,7 +50,7 @@ async def run_setup(session: SetupSession) -> None:
             errors = {
                 CONF_SERVER_URI: SetupFlowError(
                     "Address must be tcp://host:port; a bare host:port is also accepted",
-                    "invalid_uri",
+                    "invalid_address",
                 )
             }
             continue

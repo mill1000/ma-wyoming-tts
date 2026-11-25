@@ -27,7 +27,7 @@
     },
     "output_format": {
       "label": "Output format",
-      "description": "The audio format rendered clips are stored and served in.",
+      "description": "Audio format to store and serve synthesized clips in.",
       "options": {
         "mp3": "MP3",
         "wav": "WAV"
@@ -35,15 +35,15 @@
     },
     "synthesis_timeout": {
       "label": "Synthesis timeout",
-      "description": "The number of seconds to wait for the server to synthesize a message."
+      "description": "Seconds to wait for the server to synthesize a message, before the synthesis fails"
     }
   },
   "errors": {
-    "invalid_uri": "Address must be tcp://host:port; a bare host:port is also accepted.",
+    "invalid_address": "Invalid server address. Expected host:port",
     "cannot_connect": "Could not connect to the server. Check the address and ensure the server is running.",
-    "no_tts_programs": "The server does not advertise any TTS programs.",
+    "no_tts_programs": "The server does not advertise any TTS programs or voices.",
     "no_voices": "The language and voice filters do not match anything advertised by the server. Change the voice or language filters in the plugin's options.",
     "voice_not_found": "The configured voice is no longer available on the server.",
-    "synthesis_timeout": "The server did not render the message within {0} seconds. Check the Wyoming server's log for errors or increase the synthesis timeout in the plugin's options."
+    "synthesis_timeout": "The server did not synthesize the message within {0} seconds. Check the Wyoming server's log for errors or increase the synthesis timeout in the plugin's options."
   }
 }
