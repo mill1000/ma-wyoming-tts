@@ -8,3 +8,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:0.13.8 /uv /uvx /bin/
+
+# non-root user to run the container as
+RUN groupadd node && useradd -m -g node -s /bin/bash node
+USER node
