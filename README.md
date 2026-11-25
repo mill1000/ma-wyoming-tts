@@ -9,11 +9,11 @@ Easily interface with your existing Wyoming TTS servers like:
 
 By default, every TTS program & voice the server advertises is made available to Music Assistant as a selectable TTS engine. 
 
-See [filtering languages and voices](#Filtering Languages And Voices) to filter the language and voice options made available to Music Assistant.
+See [filtering languages and voices](#filtering-languages-and-voices) to reduce the options made available to Music Assistant.
 
 ## Installation
 
-Search the Music Assistant Marketplace for "Wyoming TTS". Click the "Add" button.
+Search the Music Assistant Marketplace for "Wyoming TTS". Click the "+ Add" button.
 
 ## Configuration
 
